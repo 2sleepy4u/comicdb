@@ -1,1 +1,1 @@
-pub const DB_CONNECTION_STRING: &str = include_str!("./../dbconnection");
+pub const SQLITE_CONNECTION_STRING: &str = "sqlite:comic.db";

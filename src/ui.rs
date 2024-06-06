@@ -1,4 +1,4 @@
-use eframe::egui;
+use eframe::egui::{self, DragValue, Sense};
 use egui_extras::{TableBuilder, Column};
 
 use crate::types::*;
@@ -13,6 +13,7 @@ impl MyApp {
                 self.detail_opened = Some(DetailComic { detail_type: DetailType::New, ..Default::default() });
             }
 
+            /*
             if !self.zoom && ui.button("Attiva zoom").clicked() {
                 ctx.set_pixels_per_point(1.5);
                 self.zoom = true;
@@ -20,6 +21,7 @@ impl MyApp {
                 ctx.set_pixels_per_point(1.);
                 self.zoom = false;
             }
+            */
 
         });
         ui.vertical(|ui| {
@@ -114,6 +116,7 @@ impl MyApp {
             .column(Column::remainder().at_least(20.0))
             .column(Column::remainder().at_least(100.0))
             .column(Column::remainder().at_least(500.0))
+            .column(Column::remainder().at_least(80.0))
             .column(Column::remainder().at_least(70.0))
             .column(Column::remainder().at_least(80.0))
             .column(Column::remainder().at_least(70.0))
@@ -127,6 +130,9 @@ impl MyApp {
                 });
                 header.col(|ui| {
                     ui.heading("Titolo");
+                });
+                header.col(|ui| {
+                    ui.heading("Volume");
                 });
 
                 header.col(|ui| {
@@ -206,6 +212,10 @@ impl MyApp {
                     ui.label(format!("{}", comic.title));
                 });
                 row.col(|ui| {
+                    ui.label(format!("{}", comic.volume));
+                });
+
+                row.col(|ui| {
                     ui.label(format!("{}", comic.genre));
                 });
                 row.col(|ui| {
@@ -233,7 +243,7 @@ impl MyApp {
                 egui::ViewportId::from_hash_of(title),
                 egui::ViewportBuilder::default()
                 .with_title(title)
-                .with_inner_size([530.0, 350.0]),
+                .with_inner_size([530.0, 370.0]),
                 |ctx, class| {
                     egui::CentralPanel::default().show(ctx, |ui| {
                         egui_extras::install_image_loaders(ctx);
@@ -262,9 +272,15 @@ impl MyApp {
                                     ui.label("Immagine:");
                                     ui.group(|ui| {
                                         ui.set_height(200.);
-                                        ui.add(
-                                            egui::Image::new(&detail_comic.comic.image).max_width(150.)
+                                        let response = 
+                                            ui.add(
+                                            egui::Image::new(&detail_comic.comic.image).max_width(150.).sense(Sense::click())
                                             );
+                                        response.context_menu(|ui| {
+                                            ui.set_enabled(can_modify);
+                                            ui.label("Inserisci link immagine");
+                                            ui.text_edit_singleline(&mut detail_comic.comic.image);
+                                        });
                                     })
                                 });
 
@@ -285,6 +301,13 @@ impl MyApp {
                                         });
                                         ui.horizontal(|ui| {
                                             ui.set_enabled(can_modify);
+                                            ui.label("Volume: ");
+                                            ui.add(
+                                                DragValue::new(&mut detail_comic.comic.volume)
+                                            );
+                                        });
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(can_modify);
                                             let title_label = ui.label("Autore: ");
                                             ui.text_edit_singleline(&mut detail_comic.comic.author)
                                                 .labelled_by(title_label.id);
@@ -302,7 +325,7 @@ impl MyApp {
                                                 .labelled_by(label.id);
                                         });
                                         ui.horizontal(|ui| {
-                                            ui.set_enabled(is_new);
+                                            ui.set_enabled(false);
                                             let label = ui.label("Quantità: ");
                                             ui.text_edit_singleline(&mut detail_comic.str_quantity)
                                                 .labelled_by(label.id);
@@ -323,9 +346,13 @@ impl MyApp {
                                         if ui.button("Aggiungi").clicked() {
                                             if let Ok(val) = detail_comic.str_price.parse() {
                                                 detail_comic.comic.price = val;
-                                                insert_comic(&detail_comic.comic);
-                                                self.detail_opened = None;
-                                                self.comics = db_search(&Comic::default());
+                                                if let Err(e) = insert_comic(&detail_comic.comic) {
+                                                    self.toasts.error("Si è verificato un errore nell'inserimento");  
+                                                    self.toasts.warning("E' probabile che questo ISBN sia già registrato");  
+                                                } else {
+                                                    self.detail_opened = None;
+                                                    self.comics = db_search(&Comic::default());
+                                                }
                                             }
                                         } else {
                                             self.detail_opened = Some(detail_comic);
@@ -346,9 +373,12 @@ impl MyApp {
                                                 if ui.button("Carica").clicked() {
                                                     if let Ok(val) = detail_comic.str_sc_quantity.parse() {
                                                         detail_comic.comic.quantity = val;
-                                                        carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None);
-                                                        self.detail_opened = None;
-                                                        self.comics = db_search(&Comic::default());
+                                                        if let Err(e) = carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
+                                                            self.toasts.error("Si è verificato un errore nel carico");
+                                                        } else {
+                                                            self.detail_opened = None;
+                                                            self.comics = db_search(&Comic::default());
+                                                        }
                                                     } else {
                                                         self.toasts.error("Quantità inserita non valida");
                                                     }
@@ -373,9 +403,12 @@ impl MyApp {
                                                 if ui.button("Sarica").clicked() {
                                                     if let Ok(val) = detail_comic.str_sc_quantity.parse() {
                                                         detail_comic.comic.quantity = val;
-                                                        scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None);
-                                                        self.detail_opened = None;
-                                                        self.comics = db_search(&Comic::default());
+                                                        if let Err(e) = scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
+                                                            self.toasts.error("Si è verificato un errore nello scarico");
+                                                        } else {
+                                                            self.detail_opened = None;
+                                                            self.comics = db_search(&Comic::default());
+                                                        }
                                                     } else {
                                                         self.toasts.error("Quantità inserita non valida");
                                                     }
@@ -389,9 +422,12 @@ impl MyApp {
                                             if ui.button("Salva").clicked() {
                                                 if let Ok(val) = detail_comic.str_price.parse() {
                                                     detail_comic.comic.price = val;
-                                                    update_comic(&detail_comic.comic);
-                                                    self.detail_opened = None;
-                                                    self.comics = db_search(&Comic::default());
+                                                    if let Err(e) = update_comic(&detail_comic.comic) {
+                                                        self.toasts.error("Si è verificato un errore con l'aggiornamento dei dati di questo articolo");
+                                                    } else {
+                                                        self.detail_opened = None;
+                                                        self.comics = db_search(&Comic::default());
+                                                    }
                                                 } else {
                                                     self.toasts.error("Prezzo inserito non valido");
                                                 }
