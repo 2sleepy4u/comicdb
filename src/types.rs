@@ -7,7 +7,8 @@ pub struct Comic {
     pub genre: String,
     pub image: String,
     pub price: f32,
-    pub quantity: i32
+    pub quantity: i32,
+    pub volume: i32
 } 
 
 #[derive(Clone, Default, Debug)]
@@ -40,7 +41,7 @@ pub struct MyApp {
     pub comics: Vec<Comic>,
     pub detail_opened: Option<DetailComic>,
     pub toasts: Toasts,
-    pub zoom: bool
+    pub zoom: bool,
 }
 
 impl Default for MyApp {

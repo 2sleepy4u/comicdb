@@ -1,16 +1,19 @@
-use sqlx::MySqlPool;
 use crate::types::*;
+use sqlx::Connection;
+use sqlx::migrate::MigrateDatabase;
+use sqlx::sqlite::SqliteConnection;
 
-pub fn insert_comic(comic: &Comic) {
+
+pub fn insert_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let pool = MySqlPool::connect(comicdb::DB_CONNECTION_STRING)
+        let mut pool = SqliteConnection::connect(comicdb::SQLITE_CONNECTION_STRING)
             .await
             .unwrap();
         sqlx::query("
             INSERT INTO Comics
-            (isbn, title, author, genre, price, image) VALUES
-            (?, ?, ?, ?, ?, ?)
+            (isbn, title, author, genre, price, image, volume) VALUES
+            (?, ?, ?, ?, ?, ?, ?)
          ")
             .bind(&comic.isbn)
             .bind(&comic.title)
@@ -18,16 +21,16 @@ pub fn insert_comic(comic: &Comic) {
             .bind(&comic.genre)
             .bind(&comic.price)
             .bind(&comic.image)
-            .execute(&pool)
+            .bind(&comic.volume)
+            .execute(&mut pool)
             .await
-            .unwrap();
-    });
+    })
 }
 
-pub fn update_comic(comic: &Comic) {
+pub fn update_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let pool = MySqlPool::connect(comicdb::DB_CONNECTION_STRING)
+        let mut pool = SqliteConnection::connect(comicdb::SQLITE_CONNECTION_STRING)
             .await
             .unwrap();
         let title = if comic.title.is_empty() { None } else { Some(&comic.title)}; 
@@ -39,7 +42,9 @@ pub fn update_comic(comic: &Comic) {
                 title = IFNULL(?, title),
                 author = IFNULL(?, author),
                 genre = IFNULL(?, genre),
-                price = IFNULL(?, price)
+                price = IFNULL(?, price),
+                volume = IFNULL(?, volume),
+                image = IFNULL(?, image)
             WHERE
                 isbn = ?
          ")
@@ -47,48 +52,47 @@ pub fn update_comic(comic: &Comic) {
             .bind(&author)
             .bind(&genre)
             .bind(&comic.price)
+            .bind(&comic.volume)
+            .bind(&comic.image)
             .bind(&comic.isbn)
-            .execute(&pool)
+            .execute(&mut pool)
             .await
-            .unwrap();
-    });
+    })
+}
+
+pub async fn create_db() {
+    sqlx::Sqlite::create_database(comicdb::SQLITE_CONNECTION_STRING).await.unwrap();
+    let mut pool = SqliteConnection::connect(comicdb::SQLITE_CONNECTION_STRING)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("./../db/schema.sql"))
+        .execute(&mut pool)
+        .await
+        .unwrap();
 }
 
 pub fn db_search(comic: &Comic) -> Vec<Comic> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let pool = MySqlPool::connect(comicdb::DB_CONNECTION_STRING)
+        if !sqlx::Sqlite::database_exists(comicdb::SQLITE_CONNECTION_STRING).await.unwrap() {
+            create_db().await;
+        }
+
+        let mut pool = SqliteConnection::connect(comicdb::SQLITE_CONNECTION_STRING)
             .await
             .unwrap();
+
+
         let isbn = if comic.isbn.is_empty() { None } else { Some(&comic.isbn)}; 
-        let row: Vec<Comic> = sqlx::query_as("
-                SELECT 
-                     C.isbn,
-                     C.title,
-                     C.author,
-                     CAST(SUM(IFNULL(MM.quantity_c, 0) - IFNULL(MM.quantity_s, 0)) AS INT) as quantity,
-                     C.image,
-                     C.price,
-                     C.genre
-                 FROM
-                    Comics C LEFT JOIN
-                    MagMov MM ON C.isbn = MM.isbn 
-                WHERE
-                    C.isbn = IFNULL(?, C.isbn)
-                AND C.title LIKE CONCAT('%', ?, '%')
-                AND C.genre LIKE CONCAT('%', ?, '%')
-                AND C.author LIKE CONCAT('%', ?, '%')
-                GROUP By
-                    C.isbn, C.title, C.author, C.image, C.price, C.genre
-                 ")
+        let row: Vec<Comic> = sqlx::query_as(include_str!("./../db/comic_list.sql"))
             .bind(isbn)
             .bind(&comic.title)
             .bind(&comic.genre)
             .bind(&comic.author)
-            .fetch_all(&pool)
+            .fetch_all(&mut pool)
             .await
-            //.unwrap();
-            .unwrap_or(Vec::new());
+            .unwrap();
         row
     })
 }
@@ -122,8 +126,8 @@ pub fn google_search(comic: &Comic) -> Option<Vec<Comic>> {
         .as_array()
         .unwrap_or(&Vec::new())
         .iter()
-        .filter(|x| x["saleInfo"]["country"].as_str().unwrap_or("") == "IT")
-        .filter(|x| x["volumeInfo"]["language"].as_str().unwrap_or("") == "it")
+        //.filter(|x| x["saleInfo"]["country"].as_str().unwrap_or("") == "IT")
+        //.filter(|x| x["volumeInfo"]["language"].as_str().unwrap_or("") == "it")
         .fold(Vec::new(), |mut acc, x| {
             let isbn: String = x["volumeInfo"]["industryIdentifiers"]
                 .as_array()
@@ -149,10 +153,8 @@ pub fn google_search(comic: &Comic) -> Option<Vec<Comic>> {
                 title,
                 image,
                 author,
-                quantity: 0,
-                price: 0.,
                 isbn,
-                genre: "".to_string()
+                ..Default::default()
             });
             acc
         });
@@ -207,10 +209,8 @@ pub fn google_search(comic: &Comic) -> Option<Vec<Comic>> {
                     title,
                     image,
                     author,
-                    quantity: 0,
-                    price: 0.,
                     isbn,
-                    genre: "".to_string()
+                    ..Default::default()
                 });
                 acc
             });
@@ -220,42 +220,40 @@ pub fn google_search(comic: &Comic) -> Option<Vec<Comic>> {
 }
 
 
-pub fn carica_comic(comic: &Comic, quantity: i32, note: Option<String>) {
+pub fn carica_comic(comic: &Comic, quantity: i32, note: Option<String>) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let pool = MySqlPool::connect(comicdb::DB_CONNECTION_STRING)
+        let mut pool = SqliteConnection::connect(comicdb::SQLITE_CONNECTION_STRING)
             .await
             .unwrap();
         sqlx::query("
                     INSERT INTO MagMov
                     (isbn, quantity_s, quantity_c, mov_date, note) VALUES
-                    (?, 0, ?, NOW(), ?)
+                    (?, 0, ?, DATE('now'), ?)
                     ")
             .bind(&comic.isbn)
             .bind(&quantity)
             .bind(note.unwrap_or("".to_string()))
-            .execute(&pool)
+            .execute(&mut pool)
             .await
-            .unwrap();
-    });
+    })
 
 }
-pub fn scarica_comic(comic: &Comic, quantity: i32, note: Option<String>) {
+pub fn scarica_comic(comic: &Comic, quantity: i32, note: Option<String>) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let pool = MySqlPool::connect(comicdb::DB_CONNECTION_STRING)
+        let mut pool = SqliteConnection::connect(comicdb::SQLITE_CONNECTION_STRING)
             .await
             .unwrap();
         sqlx::query("
                     INSERT INTO MagMov
                     (isbn, quantity_s, quantity_c, mov_date) VALUES
-                    (?, ?, 0, NOW())
+                    (?, ?, 0, DATE('now'))
                     ")
             .bind(&comic.isbn)
             .bind(&quantity)
             .bind(note.unwrap_or("".to_string()))
-            .execute(&pool)
+            .execute(&mut pool)
             .await
-            .unwrap();
-    });
+    })
 }

@@ -16,7 +16,7 @@ const ICON: &[u8; 19728] = include_bytes!("./../assets/box.png");
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_min_inner_size(Vec2::new(1000., 500.))
+            .with_min_inner_size(Vec2::new(1000., 600.))
             .with_icon(icon_data::from_png_bytes(ICON).unwrap()),
         ..Default::default()
     };
@@ -35,6 +35,7 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Magazzino");
+            ctx.set_pixels_per_point(1.3);
             self.comics_filter(ui, ctx); 
             self.comics_list(ui, self.comics.clone(), false); 
             self.comic_detail(ui, ctx);
