@@ -78,6 +78,8 @@ pub fn db_search(comic: &Comic) -> Vec<Comic> {
                 AND C.title LIKE CONCAT('%', ?, '%')
                 AND C.genre LIKE CONCAT('%', ?, '%')
                 AND C.author LIKE CONCAT('%', ?, '%')
+                GROUP By
+                    C.isbn, C.title, C.author, C.image, C.price, C.genre
                  ")
             .bind(isbn)
             .bind(&comic.title)

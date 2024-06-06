@@ -31,12 +31,16 @@ pub struct DetailComic {
     pub detail_type: DetailType
 }
 
+use egui_notify::Toasts;
+
 pub struct MyApp {
     pub search: Comic,
     pub online_search: bool,
     pub online_search_results: Option<Vec<Comic>>,
     pub comics: Vec<Comic>,
-    pub detail_opened: Option<DetailComic>
+    pub detail_opened: Option<DetailComic>,
+    pub toasts: Toasts,
+    pub zoom: bool
 }
 
 impl Default for MyApp {
@@ -46,7 +50,9 @@ impl Default for MyApp {
             online_search: false,
             online_search_results: None,
             comics: Vec::new(),
-            detail_opened: None
+            detail_opened: None,
+            toasts: Toasts::default(),
+            zoom: false
         }
     }
 }
