@@ -4,13 +4,23 @@ use egui_extras::{TableBuilder, Column};
 use crate::types::*;
 use crate::crud::{db_search, google_search, insert_comic, update_comic, carica_comic, scarica_comic};
 
+
+
 impl MyApp {
     pub fn comics_filter(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.horizontal(|ui| {
             if ui.button("Nuovo").clicked() {
                 self.detail_opened = Some(DetailComic { detail_type: DetailType::New, ..Default::default() });
             }
-            
+
+            if !self.zoom && ui.button("Attiva zoom").clicked() {
+                ctx.set_pixels_per_point(1.5);
+                self.zoom = true;
+            } else if self.zoom && ui.button("Disattiva zoom").clicked() {
+                ctx.set_pixels_per_point(1.);
+                self.zoom = false;
+            }
+
         });
         ui.vertical(|ui| {
             let isbn_input = 
@@ -61,8 +71,12 @@ impl MyApp {
                    ) && ui.input(|x| x.key_pressed(egui::Key::Enter)) || ui.button("Cerca").clicked()
                 {
                     if self.online_search {
-                        //self.detail_opened = google_search(&self.search);
-                        self.online_search_results = google_search(&self.search);
+                        let internal_result = db_search(&self.search);
+                        if internal_result.iter().find(|x| x.isbn == self.search.isbn).is_none() {
+                            self.online_search_results = google_search(&self.search);
+                        } else {
+                            self.toasts.warning("Il codice ISBN cercato è già presente in magazzino");
+                        }
                     } else {
                         let comic_result = db_search(&self.search);
                         self.comics = comic_result;
@@ -73,10 +87,7 @@ impl MyApp {
                     self.search = Comic::default();
                 }
             });
-
-
         });
-
     }
     pub fn comic_online_list(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         if let Some(mut comic) = self.online_search_results.clone() {
@@ -222,7 +233,7 @@ impl MyApp {
                 egui::ViewportId::from_hash_of(title),
                 egui::ViewportBuilder::default()
                 .with_title(title)
-                .with_inner_size([530.0, 330.0]),
+                .with_inner_size([530.0, 350.0]),
                 |ctx, class| {
                     egui::CentralPanel::default().show(ctx, |ui| {
                         egui_extras::install_image_loaders(ctx);
@@ -246,135 +257,151 @@ impl MyApp {
                                 false
                             };
                         ui.horizontal(|ui| {
-                            ui.vertical(|ui| {
-                                ui.set_height(200.);
-                                ui.add(
-                                    egui::Image::new(&detail_comic.comic.image).max_width(150.)
-                                    );
-                            });
-
-                            ui.vertical(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.set_enabled(is_new);
-                                    let title_label = ui.label("ISBN: ");
-                                    ui.text_edit_singleline(&mut detail_comic.comic.isbn)
-                                        .labelled_by(title_label.id);
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.set_enabled(can_modify);
-                                    let title_label = ui.label("Titolo: ");
-                                    ui.text_edit_singleline(&mut detail_comic.comic.title)
-                                        .labelled_by(title_label.id);
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.set_enabled(can_modify);
-                                    let title_label = ui.label("Autore: ");
-                                    ui.text_edit_singleline(&mut detail_comic.comic.author)
-                                        .labelled_by(title_label.id);
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.set_enabled(can_modify);
-                                    let genre_label = ui.label("Genere: ");
-                                    ui.text_edit_singleline(&mut detail_comic.comic.genre)
-                                        .labelled_by(genre_label.id);
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.set_enabled(can_modify);
-                                    let label = ui.label("Prezzo: ");
-                                    ui.text_edit_singleline(&mut detail_comic.str_price)
-                                        .labelled_by(label.id);
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.set_enabled(is_new);
-                                    let label = ui.label("Quantità: ");
-                                    ui.text_edit_singleline(&mut detail_comic.str_quantity)
-                                        .labelled_by(label.id);
+                            ui.group(|ui|{
+                                ui.vertical(|ui| {
+                                    ui.label("Immagine:");
+                                    ui.group(|ui| {
+                                        ui.set_height(200.);
+                                        ui.add(
+                                            egui::Image::new(&detail_comic.comic.image).max_width(150.)
+                                            );
+                                    })
                                 });
 
-
-                                if is_new {
-                                    /*
-                                    let img_bytes = reqwest::blocking::get(&detail_comic.comic.image)
-                                        .unwrap()
-                                        .bytes()
-                                        .unwrap();
-
-                                    let image = image::load_from_memory(&img_bytes).unwrap();
-                                    */
-
-                                    if ui.button("Aggiungi").clicked() {
-                                        if let Ok(val) = detail_comic.str_price.parse() {
-                                            detail_comic.comic.price = val;
-                                            insert_comic(&detail_comic.comic);
-                                            self.detail_opened = None;
-                                            self.comics = db_search(&Comic::default());
-                                        }
-                                    } else {
-                                        self.detail_opened = Some(detail_comic);
-                                    }
-                                } else {
-                                    if let DetailType::Carico = detail_comic.detail_type {
-                                        ui.group(|ui| {
-                                            let label = ui.label("Quantità carico");
-                                            ui.text_edit_singleline(&mut detail_comic.str_sc_quantity)
-                                                .labelled_by(label.id);
-
-
-                                            let note_label = ui.label("Note aggiuntive");
-                                            ui.text_edit_multiline(&mut detail_comic.note)
-                                                .labelled_by(note_label.id);
-
-                                            if ui.button("Carica").clicked() {
-                                                if let Ok(val) = detail_comic.str_sc_quantity.parse() {
-                                                    detail_comic.comic.quantity = val;
-                                                    carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None);
-                                                    self.detail_opened = None;
-                                                    self.comics = db_search(&Comic::default());
-                                                }
-                                            } else {
-                                                self.detail_opened = Some(detail_comic);
-                                            }
-
+                                ui.vertical(|ui| {
+                                    ui.group(|ui| {
+                                        ui.label("Dati articolo:");
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(is_new);
+                                            let title_label = ui.label("ISBN: ");
+                                            ui.text_edit_singleline(&mut detail_comic.comic.isbn)
+                                                .labelled_by(title_label.id);
                                         });
-
-                                    } else if let DetailType::Scarico = detail_comic.detail_type {
-                                        ui.group(|ui| {
-                                            let label = ui.label("Quantità scarico");
-                                            ui.text_edit_singleline(&mut detail_comic.str_sc_quantity)
-                                                .labelled_by(label.id);
-
-                                            let note_label = ui.label("Note aggiuntive");
-                                            ui.text_edit_multiline(&mut detail_comic.note)
-                                                .labelled_by(note_label.id);
-
-
-                                            if ui.button("Sarica").clicked() {
-                                                if let Ok(val) = detail_comic.str_sc_quantity.parse() {
-                                                    detail_comic.comic.quantity = val;
-                                                    scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None);
-                                                    self.detail_opened = None;
-                                                    self.comics = db_search(&Comic::default());
-                                                }
-                                            } else {
-                                                self.detail_opened = Some(detail_comic);
-                                            }
-
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(can_modify);
+                                            let title_label = ui.label("Titolo: ");
+                                            ui.text_edit_singleline(&mut detail_comic.comic.title)
+                                                .labelled_by(title_label.id);
                                         });
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(can_modify);
+                                            let title_label = ui.label("Autore: ");
+                                            ui.text_edit_singleline(&mut detail_comic.comic.author)
+                                                .labelled_by(title_label.id);
+                                        });
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(can_modify);
+                                            let genre_label = ui.label("Genere: ");
+                                            ui.text_edit_singleline(&mut detail_comic.comic.genre)
+                                                .labelled_by(genre_label.id);
+                                        });
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(can_modify);
+                                            let label = ui.label("Prezzo: ");
+                                            ui.text_edit_singleline(&mut detail_comic.str_price)
+                                                .labelled_by(label.id);
+                                        });
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(is_new);
+                                            let label = ui.label("Quantità: ");
+                                            ui.text_edit_singleline(&mut detail_comic.str_quantity)
+                                                .labelled_by(label.id);
+                                        });
+                                    });
 
-                                    } else if let DetailType::Modify = detail_comic.detail_type {
-                                        if ui.button("Salva").clicked() {
+
+                                    if is_new {
+                                        /*
+                                           let img_bytes = reqwest::blocking::get(&detail_comic.comic.image)
+                                           .unwrap()
+                                           .bytes()
+                                           .unwrap();
+
+                                           let image = image::load_from_memory(&img_bytes).unwrap();
+                                           */
+
+                                        if ui.button("Aggiungi").clicked() {
                                             if let Ok(val) = detail_comic.str_price.parse() {
                                                 detail_comic.comic.price = val;
-                                                update_comic(&detail_comic.comic);
+                                                insert_comic(&detail_comic.comic);
                                                 self.detail_opened = None;
                                                 self.comics = db_search(&Comic::default());
                                             }
                                         } else {
                                             self.detail_opened = Some(detail_comic);
                                         }
-                                    }
+                                    } else {
+                                        if let DetailType::Carico = detail_comic.detail_type {
+                                            ui.group(|ui| {
+                                                ui.label("Carico articolo:");
+                                                let label = ui.label("Quantità carico");
+                                                ui.text_edit_singleline(&mut detail_comic.str_sc_quantity)
+                                                    .labelled_by(label.id);
 
-                                }
+
+                                                let note_label = ui.label("Note aggiuntive");
+                                                ui.text_edit_multiline(&mut detail_comic.note)
+                                                    .labelled_by(note_label.id);
+
+                                                if ui.button("Carica").clicked() {
+                                                    if let Ok(val) = detail_comic.str_sc_quantity.parse() {
+                                                        detail_comic.comic.quantity = val;
+                                                        carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None);
+                                                        self.detail_opened = None;
+                                                        self.comics = db_search(&Comic::default());
+                                                    } else {
+                                                        self.toasts.error("Quantità inserita non valida");
+                                                    }
+                                                } else {
+                                                    self.detail_opened = Some(detail_comic);
+                                                }
+
+                                            });
+
+                                        } else if let DetailType::Scarico = detail_comic.detail_type {
+                                            ui.group(|ui| {
+                                                ui.label("Scarico articolo:");
+                                                let label = ui.label("Quantità scarico");
+                                                ui.text_edit_singleline(&mut detail_comic.str_sc_quantity)
+                                                    .labelled_by(label.id);
+
+                                                let note_label = ui.label("Note aggiuntive");
+                                                ui.text_edit_multiline(&mut detail_comic.note)
+                                                    .labelled_by(note_label.id);
+
+
+                                                if ui.button("Sarica").clicked() {
+                                                    if let Ok(val) = detail_comic.str_sc_quantity.parse() {
+                                                        detail_comic.comic.quantity = val;
+                                                        scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None);
+                                                        self.detail_opened = None;
+                                                        self.comics = db_search(&Comic::default());
+                                                    } else {
+                                                        self.toasts.error("Quantità inserita non valida");
+                                                    }
+                                                } else {
+                                                    self.detail_opened = Some(detail_comic);
+                                                }
+
+                                            });
+
+                                        } else if let DetailType::Modify = detail_comic.detail_type {
+                                            if ui.button("Salva").clicked() {
+                                                if let Ok(val) = detail_comic.str_price.parse() {
+                                                    detail_comic.comic.price = val;
+                                                    update_comic(&detail_comic.comic);
+                                                    self.detail_opened = None;
+                                                    self.comics = db_search(&Comic::default());
+                                                } else {
+                                                    self.toasts.error("Prezzo inserito non valido");
+                                                }
+                                            } else {
+                                                self.detail_opened = Some(detail_comic);
+                                            }
+                                        }
+
+                                    }
+                                });
                             });
                         });
                     });

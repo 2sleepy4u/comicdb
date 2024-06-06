@@ -39,6 +39,7 @@ impl eframe::App for MyApp {
             self.comics_list(ui, self.comics.clone(), false); 
             self.comic_detail(ui, ctx);
             self.comic_online_list(ui, ctx);
+            self.toasts.show(ctx);
         });
     }
 
