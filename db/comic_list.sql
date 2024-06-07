@@ -16,5 +16,6 @@ WHERE
 AND C.title LIKE CONCAT('%', ?, '%')
 AND C.genre LIKE CONCAT('%', ?, '%')
 AND C.author LIKE CONCAT('%', ?, '%')
+AND (? = false OR C.active = ?)
 GROUP By
     C.isbn, C.title, C.author, C.image, C.price, C.genre

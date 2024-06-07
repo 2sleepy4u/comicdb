@@ -65,7 +65,7 @@ impl MyApp {
             ui.horizontal(|ui| {
 
                 ui.checkbox(&mut self.online_search, "Online");
-                ui.checkbox(&mut self.solo_attivi, "Solo attivi");
+                ui.checkbox(&mut self.search.active, "Solo attivi");
 
                 if (
                     isbn_input.lost_focus() ||
@@ -353,8 +353,8 @@ impl MyApp {
                                             if let Ok(val) = detail_comic.str_price.parse() {
                                                 detail_comic.comic.price = val;
                                                 if let Err(e) = insert_comic(&detail_comic.comic) {
-                                                    self.toasts.error("Si è verificato un errore nell'inserimento");  
-                                                    self.toasts.warning("E' probabile che questo ISBN sia già registrato");  
+                                                    self.toasts.warning("Si è verificato un errore nell'inserimento");  
+                                                    self.toasts.error(format!("{}", e));
                                                 } else {
                                                     self.detail_opened = None;
                                                     self.comics = db_search(&Comic::default());
@@ -380,7 +380,8 @@ impl MyApp {
                                                     if let Ok(val) = detail_comic.str_sc_quantity.parse() {
                                                         detail_comic.comic.quantity = val;
                                                         if let Err(e) = carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
-                                                            self.toasts.error("Si è verificato un errore nel carico");
+                                                            self.toasts.warning("Si è verificato un errore durante il carico a magazzino");
+                                                            self.toasts.error(format!("{}", e));
                                                         } else {
                                                             self.detail_opened = None;
                                                             self.comics = db_search(&Comic::default());
@@ -410,7 +411,8 @@ impl MyApp {
                                                     if let Ok(val) = detail_comic.str_sc_quantity.parse() {
                                                         detail_comic.comic.quantity = val;
                                                         if let Err(e) = scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
-                                                            self.toasts.error("Si è verificato un errore nello scarico");
+                                                            self.toasts.warning("Si è verificato un errore durante lo scarico da magazzino");
+                                                            self.toasts.error(format!("{}", e));
                                                         } else {
                                                             self.detail_opened = None;
                                                             self.comics = db_search(&Comic::default());
@@ -429,7 +431,8 @@ impl MyApp {
                                                 if let Ok(val) = detail_comic.str_price.parse() {
                                                     detail_comic.comic.price = val;
                                                     if let Err(e) = update_comic(&detail_comic.comic) {
-                                                        self.toasts.error("Si è verificato un errore con l'aggiornamento dei dati di questo articolo");
+                                                        self.toasts.warning("Si è verificato un errore con l'aggiornamento dei dati di questo articolo");
+                                                        self.toasts.error(format!("{}", e));
                                                     } else {
                                                         self.detail_opened = None;
                                                         self.comics = db_search(&Comic::default());
