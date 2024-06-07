@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Magazzino WEB AnimeClick",
+  "version": "1.0",
+  "description": "Copia i dati da AnimeClick",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "clipboardWrite"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": "box.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["jquery.js", "content.js"]
+    }
+  ]
+}
+
