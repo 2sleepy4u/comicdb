@@ -44,7 +44,7 @@ pub fn update_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
                 genre = IFNULL(?, genre),
                 price = IFNULL(?, price),
                 volume = IFNULL(?, volume),
-                image = IFNULL(?, image)
+                image = IFNULL(?, image),
                 active = IFNULL(?, active)
             WHERE
                 isbn = ?
@@ -92,6 +92,8 @@ pub fn db_search(comic: &Comic) -> Vec<Comic> {
             .bind(&comic.title)
             .bind(&comic.genre)
             .bind(&comic.author)
+            .bind(&comic.active)
+            .bind(&comic.active)
             .fetch_all(&mut pool)
             .await
             .unwrap();

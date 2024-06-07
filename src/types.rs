@@ -42,7 +42,6 @@ pub struct MyApp {
     pub comics: Vec<Comic>,
     pub detail_opened: Option<DetailComic>,
     pub toasts: Toasts,
-    pub solo_attivi: bool,
 }
 
 impl Default for MyApp {
@@ -54,7 +53,6 @@ impl Default for MyApp {
             comics: Vec::new(),
             detail_opened: None,
             toasts: Toasts::default(),
-            solo_attivi: true
         }
     }
 }
