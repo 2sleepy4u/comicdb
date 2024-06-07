@@ -5,7 +5,8 @@ CREATE TABLE Comics (
     author VARCHAR(255),
     image VARCHAR(255),
     volume INT,
-    price FLOAT DEFAULT 0
+    price FLOAT DEFAULT 0,
+    active BOOL DEFAULT TRUE
 );
 
 CREATE TABLE MagMov (

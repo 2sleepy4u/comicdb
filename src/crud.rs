@@ -12,8 +12,8 @@ pub fn insert_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
             .unwrap();
         sqlx::query("
             INSERT INTO Comics
-            (isbn, title, author, genre, price, image, volume) VALUES
-            (?, ?, ?, ?, ?, ?, ?)
+            (isbn, title, author, genre, price, image, volume, active) VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?)
          ")
             .bind(&comic.isbn)
             .bind(&comic.title)
@@ -45,6 +45,7 @@ pub fn update_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
                 price = IFNULL(?, price),
                 volume = IFNULL(?, volume),
                 image = IFNULL(?, image)
+                active = IFNULL(?, active)
             WHERE
                 isbn = ?
          ")
@@ -54,6 +55,7 @@ pub fn update_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
             .bind(&comic.price)
             .bind(&comic.volume)
             .bind(&comic.image)
+            .bind(&comic.active)
             .bind(&comic.isbn)
             .execute(&mut pool)
             .await

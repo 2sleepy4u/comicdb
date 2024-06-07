@@ -1,4 +1,5 @@
 use eframe::egui::{self, DragValue, Sense};
+
 use egui_extras::{TableBuilder, Column};
 
 use crate::types::*;
@@ -64,6 +65,7 @@ impl MyApp {
             ui.horizontal(|ui| {
 
                 ui.checkbox(&mut self.online_search, "Online");
+                ui.checkbox(&mut self.solo_attivi, "Solo attivi");
 
                 if (
                     isbn_input.lost_focus() ||
@@ -329,6 +331,10 @@ impl MyApp {
                                             let label = ui.label("Quantità: ");
                                             ui.text_edit_singleline(&mut detail_comic.str_quantity)
                                                 .labelled_by(label.id);
+                                        });
+                                        ui.horizontal(|ui| {
+                                            ui.set_enabled(can_modify);
+                                            ui.checkbox(&mut detail_comic.comic.active, "Attivo:");
                                         });
                                     });
 

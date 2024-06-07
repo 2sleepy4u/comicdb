@@ -8,7 +8,8 @@ pub struct Comic {
     pub image: String,
     pub price: f32,
     pub quantity: i32,
-    pub volume: i32
+    pub volume: i32,
+    pub active: bool
 } 
 
 #[derive(Clone, Default, Debug)]
@@ -41,7 +42,7 @@ pub struct MyApp {
     pub comics: Vec<Comic>,
     pub detail_opened: Option<DetailComic>,
     pub toasts: Toasts,
-    pub zoom: bool,
+    pub solo_attivi: bool,
 }
 
 impl Default for MyApp {
@@ -53,7 +54,7 @@ impl Default for MyApp {
             comics: Vec::new(),
             detail_opened: None,
             toasts: Toasts::default(),
-            zoom: false
+            solo_attivi: true
         }
     }
 }

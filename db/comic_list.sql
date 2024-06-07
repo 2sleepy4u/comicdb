@@ -6,7 +6,8 @@ SELECT
     C.image,
     C.volume,
     C.price,
-    C.genre
+    C.genre,
+    C.active
 FROM
     Comics C LEFT JOIN
     MagMov MM ON C.isbn = MM.isbn 
