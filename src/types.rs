@@ -1,6 +1,8 @@
+use serde::Deserialize;
 use sqlx::FromRow;
-#[derive(Clone, FromRow, Default, Debug)]
+#[derive(Clone, FromRow, Default, Debug, Deserialize)]
 pub struct Comic {
+    pub id_comic: i32,
     pub isbn: String,
     pub title: String,
     pub author: String,
@@ -9,7 +11,8 @@ pub struct Comic {
     pub price: f32,
     pub quantity: i32,
     pub volume: i32,
-    pub active: bool
+    pub active: bool,
+    pub external_link: String
 } 
 
 #[derive(Clone, Default, Debug)]
@@ -25,11 +28,8 @@ pub enum DetailType {
 #[derive(Clone, Default, Debug)]
 pub struct DetailComic {
     pub comic: Comic,
-    pub str_price: String,
-    pub str_quantity: String,
-    pub str_sc_quantity: String,
+    pub mag_mov_quantity: i32,
     pub note: String,
-    pub quantity: i32,
     pub detail_type: DetailType
 }
 

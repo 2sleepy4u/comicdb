@@ -1,4 +1,5 @@
 SELECT 
+    C.id_comic,
     C.isbn,
     C.title,
     C.author,
@@ -7,10 +8,11 @@ SELECT
     C.volume,
     C.price,
     C.genre,
-    C.active
+    C.active,
+    C.external_link
 FROM
     Comics C LEFT JOIN
-    MagMov MM ON C.isbn = MM.isbn 
+    MagMov MM ON C.id_comic = MM.id_comic
 WHERE
     C.isbn = IFNULL(?, C.isbn)
 AND C.title LIKE CONCAT('%', ?, '%')

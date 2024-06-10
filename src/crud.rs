@@ -12,8 +12,8 @@ pub fn insert_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
             .unwrap();
         sqlx::query("
             INSERT INTO Comics
-            (isbn, title, author, genre, price, image, volume, active) VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?)
+            (isbn, title, author, genre, price, image, volume, active, external_link) VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ")
             .bind(&comic.isbn)
             .bind(&comic.title)
@@ -22,6 +22,8 @@ pub fn insert_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
             .bind(&comic.price)
             .bind(&comic.image)
             .bind(&comic.volume)
+            .bind(&comic.active)
+            .bind(&comic.external_link)
             .execute(&mut pool)
             .await
     })
@@ -39,16 +41,19 @@ pub fn update_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
         sqlx::query("
             UPDATE Comics
             SET
+                isbn = IFNULL(?, isbn),
                 title = IFNULL(?, title),
                 author = IFNULL(?, author),
                 genre = IFNULL(?, genre),
                 price = IFNULL(?, price),
                 volume = IFNULL(?, volume),
                 image = IFNULL(?, image),
-                active = IFNULL(?, active)
+                active = IFNULL(?, active),
+                external_link = IFNULL(?, external_link)
             WHERE
-                isbn = ?
+                id_comic = ?
          ")
+            .bind(&comic.isbn)
             .bind(&title)
             .bind(&author)
             .bind(&genre)
@@ -56,7 +61,8 @@ pub fn update_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sq
             .bind(&comic.volume)
             .bind(&comic.image)
             .bind(&comic.active)
-            .bind(&comic.isbn)
+            .bind(&comic.external_link)
+            .bind(&comic.id_comic)
             .execute(&mut pool)
             .await
     })
@@ -232,9 +238,10 @@ pub fn carica_comic(comic: &Comic, quantity: i32, note: Option<String>) -> Resul
             .unwrap();
         sqlx::query("
                     INSERT INTO MagMov
-                    (isbn, quantity_s, quantity_c, mov_date, note) VALUES
-                    (?, 0, ?, DATE('now'), ?)
+                    (id_comic, isbn, quantity_s, quantity_c, mov_date, note) VALUES
+                    (?, ?, 0, ?, DATE('now'), ?)
                     ")
+            .bind(&comic.id_comic)
             .bind(&comic.isbn)
             .bind(&quantity)
             .bind(note.unwrap_or("".to_string()))
@@ -251,9 +258,10 @@ pub fn scarica_comic(comic: &Comic, quantity: i32, note: Option<String>) -> Resu
             .unwrap();
         sqlx::query("
                     INSERT INTO MagMov
-                    (isbn, quantity_s, quantity_c, mov_date) VALUES
-                    (?, ?, 0, DATE('now'))
+                    (id_comic, isbn, quantity_s, quantity_c, mov_date) VALUES
+                    (?, ?, ?, 0, DATE('now'))
                     ")
+            .bind(&comic.id_comic)
             .bind(&comic.isbn)
             .bind(&quantity)
             .bind(note.unwrap_or("".to_string()))
