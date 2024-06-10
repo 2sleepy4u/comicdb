@@ -15,9 +15,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: cd
-      run: cd ..
+    - uses: actions/checkout@latest
     - name: Build
       run: cargo build --verbose
     - name: Run tests
