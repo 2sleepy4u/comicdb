@@ -4,28 +4,44 @@ use egui_extras::{TableBuilder, Column};
 
 use crate::types::*;
 use crate::crud::{db_search, google_search, insert_comic, update_comic, carica_comic, scarica_comic};
-
+use copypasta::{ClipboardContext, ClipboardProvider};
 
 
 impl MyApp {
-    pub fn comics_filter(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+    pub fn toolbar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.horizontal(|ui| {
             if ui.button("Nuovo").clicked() {
                 self.detail_opened = Some(DetailComic { detail_type: DetailType::New, ..Default::default() });
             }
 
-            /*
-            if !self.zoom && ui.button("Attiva zoom").clicked() {
-                ctx.set_pixels_per_point(1.5);
-                self.zoom = true;
-            } else if self.zoom && ui.button("Disattiva zoom").clicked() {
-                ctx.set_pixels_per_point(1.);
-                self.zoom = false;
+            if ui.button("Importa").clicked() {
+                match &mut ClipboardContext::new() {
+                    Ok(clip) =>  {
+                        let content = clip.get_contents().unwrap_or("".to_string());
+                        if let Ok(comic) = serde_json::from_str(&content) {
+                            self.detail_opened = Some(DetailComic { detail_type: DetailType::New, comic, ..Default::default() });
+                        } else {
+                            self.toasts.warning("Formato non corretto");
+                        }
+                    },
+                    Err(_) => { self.toasts.warning("Errore nella lettura della clipboard"); }
+                }
             }
-            */
-
+            if ui.button("Impostazioni").clicked() {
+                /*
+                   if !self.zoom && ui.button("Attiva zoom").clicked() {
+                   ctx.set_pixels_per_point(1.5);
+                   self.zoom = true;
+                   } else if self.zoom && ui.button("Disattiva zoom").clicked() {
+                   ctx.set_pixels_per_point(1.);
+                   self.zoom = false;
+                   }
+                   */
+            }
         });
-        ui.vertical(|ui| {
+    }
+    pub fn comics_filter(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+       ui.vertical(|ui| {
             let isbn_input = 
                 ui.horizontal(|ui| {
                     let isbn_label = ui.label("ISBN: ");
@@ -117,11 +133,11 @@ impl MyApp {
         TableBuilder::new(ui)
             .column(Column::remainder().at_least(20.0))
             .column(Column::remainder().at_least(100.0))
-            .column(Column::remainder().at_least(500.0))
+            .column(Column::remainder().at_least(300.0))
+            .column(Column::remainder().at_least(80.0))
             .column(Column::remainder().at_least(80.0))
             .column(Column::remainder().at_least(70.0))
-            .column(Column::remainder().at_least(80.0))
-            .column(Column::remainder().at_least(70.0))
+            .column(Column::remainder().at_least(200.0))
             .striped(true)
             .header(20.0, |mut header| {
                 header.col(|ui| {
@@ -138,15 +154,14 @@ impl MyApp {
                 });
 
                 header.col(|ui| {
-                    ui.heading("Genere");
-                });
-
-                header.col(|ui| {
                     ui.heading("Quantità");
                 });
 
                 header.col(|ui| {
                     ui.heading("Prezzo");
+                });
+                header.col(|ui| {
+                    ui.heading("Genere");
                 });
             })
         .body(|mut body| {
@@ -162,8 +177,6 @@ impl MyApp {
                         if ui.button("Dettaglio").clicked() {
                             self.detail_opened = Some(DetailComic { 
                                 comic: comic.clone(), 
-                                str_price: comic.price.to_string(),
-                                str_quantity: comic.quantity.to_string(),
                                 detail_type: if is_online { DetailType::New } else { DetailType::Detail },
                                 ..Default::default() 
                             });
@@ -173,8 +186,6 @@ impl MyApp {
                         if !is_online && ui.button("Modifica").clicked() {
                             self.detail_opened = Some(DetailComic { 
                                 comic: comic.clone(), 
-                                str_price: comic.price.to_string(),
-                                str_quantity: comic.quantity.to_string(),
                                 detail_type: DetailType::Modify,
                                 ..Default::default() 
                             });
@@ -184,8 +195,6 @@ impl MyApp {
                         if !is_online && ui.button("Carico").clicked() {
                             self.detail_opened = Some(DetailComic { 
                                 comic: comic.clone(), 
-                                str_price: comic.price.to_string(),
-                                str_quantity: comic.quantity.to_string(),
                                 detail_type: DetailType::Carico,
                                 ..Default::default() 
                             });
@@ -196,8 +205,6 @@ impl MyApp {
                         if !is_online && ui.button("Scarico").clicked() {
                             self.detail_opened = Some(DetailComic { 
                                 comic: comic.clone(),
-                                str_price: comic.price.to_string(),
-                                str_quantity: comic.quantity.to_string(),
                                 detail_type: DetailType::Scarico,
                                 ..Default::default() 
                             });
@@ -216,16 +223,15 @@ impl MyApp {
                 row.col(|ui| {
                     ui.label(format!("{}", comic.volume));
                 });
-
-                row.col(|ui| {
-                    ui.label(format!("{}", comic.genre));
-                });
                 row.col(|ui| {
                     ui.label(format!("{}", comic.quantity));
                 });
 
                 row.col(|ui| {
                     ui.label(format!("{}", comic.price));
+                });
+                row.col(|ui| {
+                    ui.label(format!("{}", comic.genre));
                 });
             });
         });
@@ -245,7 +251,7 @@ impl MyApp {
                 egui::ViewportId::from_hash_of(title),
                 egui::ViewportBuilder::default()
                 .with_title(title)
-                .with_inner_size([530.0, 370.0]),
+                .with_inner_size([530.0, 400.0]),
                 |ctx, class| {
                     egui::CentralPanel::default().show(ctx, |ui| {
                         egui_extras::install_image_loaders(ctx);
@@ -305,7 +311,7 @@ impl MyApp {
                                             ui.set_enabled(can_modify);
                                             ui.label("Volume: ");
                                             ui.add(
-                                                DragValue::new(&mut detail_comic.comic.volume)
+                                                DragValue::new(&mut detail_comic.comic.volume).clamp_range(0..=1000)
                                             );
                                         });
                                         ui.horizontal(|ui| {
@@ -322,19 +328,33 @@ impl MyApp {
                                         });
                                         ui.horizontal(|ui| {
                                             ui.set_enabled(can_modify);
-                                            let label = ui.label("Prezzo: ");
-                                            ui.text_edit_singleline(&mut detail_comic.str_price)
-                                                .labelled_by(label.id);
+                                            ui.label("Prezzo: ");
+                                            ui.add(
+                                                DragValue::new(&mut detail_comic.comic.price)
+                                                    .clamp_range(0..=1000)
+                                                    .speed(0.01)
+                                                    .max_decimals(2)
+                                            );
                                         });
                                         ui.horizontal(|ui| {
                                             ui.set_enabled(false);
-                                            let label = ui.label("Quantità: ");
-                                            ui.text_edit_singleline(&mut detail_comic.str_quantity)
-                                                .labelled_by(label.id);
+                                            ui.label("Quantità: ");
+                                            ui.add(
+                                                DragValue::new(&mut detail_comic.comic.quantity)
+                                            );
                                         });
                                         ui.horizontal(|ui| {
                                             ui.set_enabled(can_modify);
-                                            ui.checkbox(&mut detail_comic.comic.active, "Attivo:");
+                                            ui.checkbox(&mut detail_comic.comic.active, "Attivo");
+                                        });
+                                        ui.horizontal(|ui| {
+                                            if can_modify {
+                                                let label = ui.label("Link esterno: ");
+                                                ui.text_edit_singleline(&mut detail_comic.comic.external_link)
+                                                    .labelled_by(label.id);
+                                            } else {
+                                                ui.hyperlink_to("AnimeClick", &detail_comic.comic.external_link);
+                                            }
                                         });
                                     });
 
@@ -350,26 +370,26 @@ impl MyApp {
                                            */
 
                                         if ui.button("Aggiungi").clicked() {
-                                            if let Ok(val) = detail_comic.str_price.parse() {
-                                                detail_comic.comic.price = val;
-                                                if let Err(e) = insert_comic(&detail_comic.comic) {
-                                                    self.toasts.warning("Si è verificato un errore nell'inserimento");  
-                                                    self.toasts.error(format!("{}", e));
-                                                } else {
-                                                    self.detail_opened = None;
-                                                    self.comics = db_search(&Comic::default());
-                                                }
+                                            if let Err(e) = insert_comic(&detail_comic.comic) {
+                                                self.toasts.warning("Si è verificato un errore nell'inserimento");  
+                                                self.toasts.error(format!("{}", e));
+                                            } else {
+                                                self.detail_opened = None;
+                                                self.comics = db_search(&Comic::default());
                                             }
+
                                         } else {
                                             self.detail_opened = Some(detail_comic);
                                         }
+
                                     } else {
                                         if let DetailType::Carico = detail_comic.detail_type {
                                             ui.group(|ui| {
                                                 ui.label("Carico articolo:");
-                                                let label = ui.label("Quantità carico");
-                                                ui.text_edit_singleline(&mut detail_comic.str_sc_quantity)
-                                                    .labelled_by(label.id);
+                                                ui.label("Quantità carico");
+                                                ui.add(
+                                                    DragValue::new(&mut detail_comic.mag_mov_quantity)
+                                                    );
 
 
                                                 let note_label = ui.label("Note aggiuntive");
@@ -377,18 +397,14 @@ impl MyApp {
                                                     .labelled_by(note_label.id);
 
                                                 if ui.button("Carica").clicked() {
-                                                    if let Ok(val) = detail_comic.str_sc_quantity.parse() {
-                                                        detail_comic.comic.quantity = val;
-                                                        if let Err(e) = carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
-                                                            self.toasts.warning("Si è verificato un errore durante il carico a magazzino");
-                                                            self.toasts.error(format!("{}", e));
-                                                        } else {
-                                                            self.detail_opened = None;
-                                                            self.comics = db_search(&Comic::default());
-                                                        }
+                                                    if let Err(e) = carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
+                                                        self.toasts.warning("Si è verificato un errore durante il carico a magazzino");
+                                                        self.toasts.error(format!("{}", e));
                                                     } else {
-                                                        self.toasts.error("Quantità inserita non valida");
+                                                        self.detail_opened = None;
+                                                        self.comics = db_search(&Comic::default());
                                                     }
+
                                                 } else {
                                                     self.detail_opened = Some(detail_comic);
                                                 }
@@ -398,9 +414,10 @@ impl MyApp {
                                         } else if let DetailType::Scarico = detail_comic.detail_type {
                                             ui.group(|ui| {
                                                 ui.label("Scarico articolo:");
-                                                let label = ui.label("Quantità scarico");
-                                                ui.text_edit_singleline(&mut detail_comic.str_sc_quantity)
-                                                    .labelled_by(label.id);
+                                               ui.label("Quantità scarico");
+                                                ui.add(
+                                                    DragValue::new(&mut detail_comic.mag_mov_quantity)
+                                                    );                                               
 
                                                 let note_label = ui.label("Note aggiuntive");
                                                 ui.text_edit_multiline(&mut detail_comic.note)
@@ -408,17 +425,12 @@ impl MyApp {
 
 
                                                 if ui.button("Sarica").clicked() {
-                                                    if let Ok(val) = detail_comic.str_sc_quantity.parse() {
-                                                        detail_comic.comic.quantity = val;
-                                                        if let Err(e) = scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
-                                                            self.toasts.warning("Si è verificato un errore durante lo scarico da magazzino");
-                                                            self.toasts.error(format!("{}", e));
-                                                        } else {
-                                                            self.detail_opened = None;
-                                                            self.comics = db_search(&Comic::default());
-                                                        }
+                                                    if let Err(e) = scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
+                                                        self.toasts.warning("Si è verificato un errore durante lo scarico da magazzino");
+                                                        self.toasts.error(format!("{}", e));
                                                     } else {
-                                                        self.toasts.error("Quantità inserita non valida");
+                                                        self.detail_opened = None;
+                                                        self.comics = db_search(&Comic::default());
                                                     }
                                                 } else {
                                                     self.detail_opened = Some(detail_comic);
@@ -428,17 +440,12 @@ impl MyApp {
 
                                         } else if let DetailType::Modify = detail_comic.detail_type {
                                             if ui.button("Salva").clicked() {
-                                                if let Ok(val) = detail_comic.str_price.parse() {
-                                                    detail_comic.comic.price = val;
-                                                    if let Err(e) = update_comic(&detail_comic.comic) {
-                                                        self.toasts.warning("Si è verificato un errore con l'aggiornamento dei dati di questo articolo");
-                                                        self.toasts.error(format!("{}", e));
-                                                    } else {
-                                                        self.detail_opened = None;
-                                                        self.comics = db_search(&Comic::default());
-                                                    }
+                                                if let Err(e) = update_comic(&detail_comic.comic) {
+                                                    self.toasts.warning("Si è verificato un errore con l'aggiornamento dei dati di questo articolo");
+                                                    self.toasts.error(format!("{}", e));
                                                 } else {
-                                                    self.toasts.error("Prezzo inserito non valido");
+                                                    self.detail_opened = None;
+                                                    self.comics = db_search(&Comic::default());
                                                 }
                                             } else {
                                                 self.detail_opened = Some(detail_comic);

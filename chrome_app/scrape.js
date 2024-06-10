@@ -1,3 +1,23 @@
+document.getElementById('all').addEventListener('click', () => {
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        chrome.scripting.executeScript({ 
+            target: {tabId: tabs[0].id},
+            files: ["jquery.js", 'content.js', "actions/all.js"]
+        }) 
+    });
+});
+
+document.getElementById('vol_thumb').addEventListener('click', () => {
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        chrome.scripting.executeScript({ 
+            target: {tabId: tabs[0].id},
+            files: ["jquery.js", 'content.js', "actions/vol_thumb.js"]
+        }) 
+    });
+});
+
+
+/*
 
 document.getElementById('title').addEventListener('click', () => {
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -32,3 +52,4 @@ document.getElementById('thumb').addEventListener('click', () => {
     });
 });
 
+*/
