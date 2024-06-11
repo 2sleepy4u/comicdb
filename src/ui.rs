@@ -1,4 +1,4 @@
-use eframe::egui::{self, DragValue, Sense};
+use eframe::egui::{self, DragValue, Sense, Slider};
 
 use egui_extras::{TableBuilder, Column};
 
@@ -8,6 +8,29 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 
 
 impl MyApp {
+    pub fn settings_modal(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        if let Modal::Opened(settings) = &mut self.settings.clone() {
+            ctx.show_viewport_immediate(
+                egui::ViewportId::from_hash_of("settings"),
+                egui::ViewportBuilder::default()
+                .with_title("Impostazioni")
+                .with_inner_size([230.0, 400.0]),
+                |ctx, class| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        ui.label("Dimensioni testo");
+                        ui.add(Slider::new(&mut settings.font_size, 1.0..=2.0));
+                        self.settings = Modal::Opened(settings.clone());
+                        ctx.set_pixels_per_point(settings.font_size);
+                        if ctx.input(|i| i.viewport().close_requested()) {
+                            self.settings = Modal::Closed(settings.clone());
+                        }
+
+                    });
+                });
+        }
+
+
+    }
     pub fn toolbar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.horizontal(|ui| {
             if ui.button("Nuovo").clicked() {
@@ -28,15 +51,11 @@ impl MyApp {
                 }
             }
             if ui.button("Impostazioni").clicked() {
+                if let Modal::Closed(settings) = self.settings.clone() {
+                    self.settings = Modal::Opened(settings);
+                }
                 /*
-                   if !self.zoom && ui.button("Attiva zoom").clicked() {
-                   ctx.set_pixels_per_point(1.5);
-                   self.zoom = true;
-                   } else if self.zoom && ui.button("Disattiva zoom").clicked() {
-                   ctx.set_pixels_per_point(1.);
-                   self.zoom = false;
-                   }
-                   */
+                  */
             }
         });
     }

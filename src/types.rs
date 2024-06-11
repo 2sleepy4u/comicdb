@@ -1,5 +1,7 @@
 use serde::Deserialize;
 use sqlx::FromRow;
+use egui_notify::Toasts;
+
 #[derive(Clone, FromRow, Default, Debug, Deserialize)]
 pub struct Comic {
     pub id_comic: i32,
@@ -33,7 +35,23 @@ pub struct DetailComic {
     pub detail_type: DetailType
 }
 
-use egui_notify::Toasts;
+#[derive(Clone)]
+pub enum Theme {
+    Light,
+    Dark
+}
+
+#[derive(Clone)]
+pub struct Settings {
+    pub font_size: f32,
+    pub theme: Theme
+}
+
+#[derive(Clone)]
+pub enum Modal<T> {
+    Opened(T),
+    Closed(T)
+}
 
 pub struct MyApp {
     pub search: Comic,
@@ -42,6 +60,7 @@ pub struct MyApp {
     pub comics: Vec<Comic>,
     pub detail_opened: Option<DetailComic>,
     pub toasts: Toasts,
+    pub settings: Modal<Settings>
 }
 
 impl Default for MyApp {
@@ -53,6 +72,7 @@ impl Default for MyApp {
             comics: Vec::new(),
             detail_opened: None,
             toasts: Toasts::default(),
+            settings: Modal::Closed(Settings { font_size: 1., theme: Theme::Dark })
         }
     }
 }
