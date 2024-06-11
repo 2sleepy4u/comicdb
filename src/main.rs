@@ -35,12 +35,12 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             //ui.heading("Magazzino");
-            ctx.set_pixels_per_point(1.3);
             self.toolbar(ui, ctx);
             self.comics_filter(ui, ctx); 
             self.comics_list(ui, self.comics.clone(), false); 
             self.comic_detail(ui, ctx);
             self.comic_online_list(ui, ctx);
+            self.settings_modal(ui, ctx);
             self.toasts.show(ctx);
         });
     }
