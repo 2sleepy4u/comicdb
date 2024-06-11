@@ -367,12 +367,14 @@ impl MyApp {
                                             ui.checkbox(&mut detail_comic.comic.active, "Attivo");
                                         });
                                         ui.horizontal(|ui| {
+                                            let label = ui.label("Link esterno: ");
                                             if can_modify {
-                                                let label = ui.label("Link esterno: ");
                                                 ui.text_edit_singleline(&mut detail_comic.comic.external_link)
                                                     .labelled_by(label.id);
-                                            } else {
+                                            } else if !detail_comic.comic.external_link.is_empty() {
                                                 ui.hyperlink_to("AnimeClick", &detail_comic.comic.external_link);
+                                            } else {
+                                                ui.label("Non impostato");
                                             }
                                         });
                                     });
