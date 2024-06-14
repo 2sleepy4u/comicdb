@@ -3,6 +3,14 @@ use sqlx::Connection;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::sqlite::SqliteConnection;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+    }
+}
 
 pub fn insert_comic(comic: &Comic) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -103,6 +111,7 @@ pub fn db_search(comic: &Comic) -> Vec<Comic> {
             .fetch_all(&mut pool)
             .await
             .unwrap();
+        println!("{:?}", row);
         row
     })
 }
@@ -238,11 +247,10 @@ pub fn carica_comic(comic: &Comic, quantity: i32, note: Option<String>) -> Resul
             .unwrap();
         sqlx::query("
                     INSERT INTO MagMov
-                    (id_comic, isbn, quantity_s, quantity_c, mov_date, note) VALUES
-                    (?, ?, 0, ?, DATE('now'), ?)
+                    (id_comic, quantity_s, quantity_c, mov_date, note) VALUES
+                    (?, 0, ?, DATE('now'), ?)
                     ")
             .bind(&comic.id_comic)
-            .bind(&comic.isbn)
             .bind(&quantity)
             .bind(note.unwrap_or("".to_string()))
             .execute(&mut pool)
@@ -258,11 +266,10 @@ pub fn scarica_comic(comic: &Comic, quantity: i32, note: Option<String>) -> Resu
             .unwrap();
         sqlx::query("
                     INSERT INTO MagMov
-                    (id_comic, isbn, quantity_s, quantity_c, mov_date) VALUES
-                    (?, ?, ?, 0, DATE('now'))
+                    (id_comic, quantity_s, quantity_c, mov_date, note) VALUES
+                    (?, ?, 0, DATE('now'), ?)
                     ")
             .bind(&comic.id_comic)
-            .bind(&comic.isbn)
             .bind(&quantity)
             .bind(note.unwrap_or("".to_string()))
             .execute(&mut pool)

@@ -1,4 +1,4 @@
-use eframe::egui::{self, DragValue, Sense, Slider};
+use eframe::egui::{self, DragValue, Sense, Slider, Visuals, OpenUrl, include_image, Button};
 
 use egui_extras::{TableBuilder, Column};
 
@@ -19,8 +19,22 @@ impl MyApp {
                     egui::CentralPanel::default().show(ctx, |ui| {
                         ui.label("Dimensioni testo");
                         ui.add(Slider::new(&mut settings.font_size, 1.0..=2.0));
+                        if ui.button("Cambia tema Chiaro/Scuro").clicked() {
+                            if let Theme::Light = settings.theme {
+                                settings.theme = Theme::Dark;
+                                ctx.style_mut(|style| {
+                                    style.visuals = Visuals::dark();
+                                });
+                            } else  {
+                                settings.theme = Theme::Light;
+                                ctx.style_mut(|style| {
+                                    style.visuals = Visuals::light();
+                                });
+                            }
+                        }
                         self.settings = Modal::Opened(settings.clone());
                         ctx.set_pixels_per_point(settings.font_size);
+ 
                         if ctx.input(|i| i.viewport().close_requested()) {
                             self.settings = Modal::Closed(settings.clone());
                         }
@@ -31,13 +45,15 @@ impl MyApp {
 
 
     }
+
     pub fn toolbar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.horizontal(|ui| {
             if ui.button("Nuovo").clicked() {
                 self.detail_opened = Some(DetailComic { detail_type: DetailType::New, ..Default::default() });
             }
-
-            if ui.button("Importa").clicked() {
+            egui_extras::install_image_loaders(ctx);
+            let image = egui::Image::new(include_image!("./../assets/box.png"));
+            if ui.add(Button::image_and_text(image, "Importa")).clicked() {
                 match &mut ClipboardContext::new() {
                     Ok(clip) =>  {
                         let content = clip.get_contents().unwrap_or("".to_string());
@@ -99,7 +115,7 @@ impl MyApp {
 
             ui.horizontal(|ui| {
 
-                ui.checkbox(&mut self.online_search, "Online");
+                ui.checkbox(&mut self.online_search, "Google");
                 ui.checkbox(&mut self.search.active, "Solo attivi");
 
                 if (
@@ -119,6 +135,19 @@ impl MyApp {
                     } else {
                         let comic_result = db_search(&self.search);
                         self.comics = comic_result;
+                    }
+                }
+
+                if ui.button("Cerca con AnimeClick").clicked() {
+                    if self.search.title.is_empty() {
+                        self.toasts.warning("Nessun tiolo impostato da cercare su AnimeClick");
+                    } else {
+                        let animeclick_name = self.search.title.replace(" ", "+");
+                        let url = format!("https://www.animeclick.it/cerca?tipo=opera&name={}", animeclick_name);
+                        ctx.open_url(OpenUrl {
+                            url,
+                            new_tab: false
+                        });
                     }
                 }
 
@@ -418,7 +447,7 @@ impl MyApp {
                                                     .labelled_by(note_label.id);
 
                                                 if ui.button("Carica").clicked() {
-                                                    if let Err(e) = carica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
+                                                    if let Err(e) = carica_comic(&detail_comic.comic, detail_comic.mag_mov_quantity, None) {
                                                         self.toasts.warning("Si è verificato un errore durante il carico a magazzino");
                                                         self.toasts.error(format!("{}", e));
                                                     } else {
@@ -435,7 +464,7 @@ impl MyApp {
                                         } else if let DetailType::Scarico = detail_comic.detail_type {
                                             ui.group(|ui| {
                                                 ui.label("Scarico articolo:");
-                                               ui.label("Quantità scarico");
+                                                ui.label("Quantità scarico");
                                                 ui.add(
                                                     DragValue::new(&mut detail_comic.mag_mov_quantity)
                                                     );                                               
@@ -445,8 +474,8 @@ impl MyApp {
                                                     .labelled_by(note_label.id);
 
 
-                                                if ui.button("Sarica").clicked() {
-                                                    if let Err(e) = scarica_comic(&detail_comic.comic, detail_comic.comic.quantity, None) {
+                                                if ui.button("Scarica").clicked() {
+                                                    if let Err(e) = scarica_comic(&detail_comic.comic, detail_comic.mag_mov_quantity, None) {
                                                         self.toasts.warning("Si è verificato un errore durante lo scarico da magazzino");
                                                         self.toasts.error(format!("{}", e));
                                                     } else {
