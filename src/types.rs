@@ -66,7 +66,7 @@ pub struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         Self {
-            search: Comic::default(),
+            search: Comic { active: true, ..Default::default() },
             online_search: false,
             online_search_results: None,
             comics: Vec::new(),

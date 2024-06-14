@@ -1,5 +1,5 @@
 CREATE TABLE Comics (
-    id_comic INT PRIMARY KEY,
+    id_comic INTEGER PRIMARY KEY,
     isbn VARCHAR(255),
     title VARCHAR(255),
     genre VARCHAR(255),
@@ -12,8 +12,8 @@ CREATE TABLE Comics (
 );
 
 CREATE TABLE MagMov (
-    id_mov INT PRIMARY KEY,
-    id_comic VARCHAR(255),
+    id_mov INTEGER PRIMARY KEY,
+    id_comic INTEGER,
     quantity_s INT NOT NULL,
     quantity_c INT NOT NULL,
     mov_date DATETIME,
