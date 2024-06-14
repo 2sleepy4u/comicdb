@@ -114,10 +114,10 @@ impl MyApp {
                 }).inner;
 
             ui.horizontal(|ui| {
-
-                ui.checkbox(&mut self.online_search, "Google");
+                //ui.checkbox(&mut self.online_search, "Google");
                 ui.checkbox(&mut self.search.active, "Solo attivi");
-
+            });
+            ui.horizontal(|ui| {
                 if (
                     isbn_input.lost_focus() ||
                     title_input.lost_focus() ||
@@ -138,7 +138,8 @@ impl MyApp {
                     }
                 }
 
-                if ui.button("Cerca con AnimeClick").clicked() {
+                let image = egui::Image::new(include_image!("./../assets/animeclick.png"));
+                if ui.add(Button::image_and_text(image, "Cerca con AnimeClick")).clicked() {
                     if self.search.title.is_empty() {
                         self.toasts.warning("Nessun tiolo impostato da cercare su AnimeClick");
                     } else {
